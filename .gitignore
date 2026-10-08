@@ -5,6 +5,8 @@
 # Internal plans & scratchpad
 plan/
 scratch/
+drafts/
+post_*.md
 .agents/
 
 # Node / Dependencies
