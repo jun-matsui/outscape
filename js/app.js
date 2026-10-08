@@ -93,9 +93,10 @@ class OutscapeApp {
       attributionControl: false
     }).setView(initialCoords, 16);
 
-    // OpenStreetMap tiles with sleek dark/contrast styling
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19
+    // Official OpenStreetMap tiles - 100% free, open-source, zero API keys required
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(this.map);
 
     // Create user walker marker
