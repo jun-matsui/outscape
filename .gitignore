@@ -1,0 +1,19 @@
+# Environment variables
+.env
+.env*.local
+
+# Internal plans & scratchpad
+plan/
+scratch/
+
+# Node / Dependencies
+node_modules/
+dist/
+build/
+.cache/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+*.log
