@@ -5,6 +5,7 @@
 # Internal plans & scratchpad
 plan/
 scratch/
+.agents/
 
 # Node / Dependencies
 node_modules/
