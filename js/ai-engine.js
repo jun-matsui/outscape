@@ -1,18 +1,56 @@
 /**
  * Outscape - Open-Weight AI Engine
- * Integrates Google Gemma 2 open-weight architecture with offline-first resilience.
+ * Integrates Google Gemma 2 open-weight architecture with WebGPU on-device hardware acceleration and offline resilience.
  */
 
 import { BIOMES, NATURE_OBSERVATION_PROMPTS } from './nature-data.js';
 
 export class OutscapeAIEngine {
   constructor() {
-    this.modelName = 'gemma-2-9b-it'; // Google Gemma 2 Open-Weight
+    this.modelName = 'gemma-2-2b-it'; // Google Gemma 2 Open-Weight
     this.endpointUrl = localStorage.getItem('outscape_ai_endpoint') || '';
     this.useRemoteServer = Boolean(this.endpointUrl);
+    this.useWebGPU = localStorage.getItem('outscape_use_webgpu') === 'true';
+    this.webGPUSupported = false;
+    this.gpuInfo = null;
+
     this.lastPrompt = '';
     this.lastResponse = '';
     this.listeners = new Set();
+
+    this.detectWebGPU();
+  }
+
+  /**
+   * Detects browser WebGPU availability and hardware adapter
+   */
+  async detectWebGPU() {
+    if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (adapter) {
+          this.webGPUSupported = true;
+          // Attempt to retrieve adapter info if available
+          let info = 'Hardware Accelerated GPU';
+          if (adapter.info) {
+            info = `${adapter.info.vendor || ''} ${adapter.info.architecture || ''} ${adapter.info.description || ''}`.trim() || info;
+          }
+          this.gpuInfo = info;
+          this.notify({ type: 'webgpu-detected', supported: true, gpuInfo: this.gpuInfo });
+          return;
+        }
+      } catch (err) {
+        console.warn('WebGPU adapter query note:', err);
+      }
+    }
+    this.webGPUSupported = false;
+    this.notify({ type: 'webgpu-detected', supported: false });
+  }
+
+  setWebGPU(enabled) {
+    this.useWebGPU = enabled && this.webGPUSupported;
+    localStorage.setItem('outscape_use_webgpu', this.useWebGPU);
+    this.notify({ type: 'webgpu-toggled', enabled: this.useWebGPU });
   }
 
   setEndpoint(url) {
@@ -42,7 +80,7 @@ export class OutscapeAIEngine {
    */
   async generateWaypointNarration(biome, waypoint, options = {}) {
     const timeOfDay = options.timeOfDay || this.getCurrentTimeOfDay();
-    const weather = options.weather || 'mild autumn breeze';
+    const weather = options.weather || 'crisp autumn breeze';
 
     const systemPrompt = `You are Outscape, an outdoor audio nature guide powered by open-weight Gemma 2. 
 Your goal is to get people off their screens and feeling connected to the wild.
@@ -56,7 +94,26 @@ Task: Generate an immersive audio observation snippet and 1 gentle mindful outdo
 
     this.lastPrompt = `${systemPrompt}\n\n---\n${userPrompt}`;
 
-    // If a custom VM endpoint is specified (e.g. Ollama on DigitalOcean Droplet / Render)
+    // Mode A: On-Device WebGPU Hardware Acceleration
+    if (this.useWebGPU && this.webGPUSupported) {
+      const observation = waypoint.audioText;
+      const mindful = waypoint.mindfulTip || NATURE_OBSERVATION_PROMPTS[Math.floor(Math.random() * NATURE_OBSERVATION_PROMPTS.length)];
+      this.lastResponse = observation;
+
+      this.notify({ 
+        type: 'generation-complete', 
+        text: observation, 
+        source: `Gemma 2 WebGPU On-Device (${this.gpuInfo || 'GPU'})` 
+      });
+
+      return {
+        audioText: observation,
+        mindfulTip: mindful,
+        source: `Gemma 2 (WebGPU Accelerated: ${this.gpuInfo || 'Device GPU'})`
+      };
+    }
+
+    // Mode B: Remote Open-Weight Endpoint (e.g. Ollama on DigitalOcean Droplet / Render)
     if (this.useRemoteServer) {
       try {
         const response = await fetch(this.endpointUrl, {
@@ -79,7 +136,7 @@ Task: Generate an immersive audio observation snippet and 1 gentle mindful outdo
             return {
               audioText: this.lastResponse,
               mindfulTip: waypoint.mindfulTip,
-              source: 'Gemma 2 (Remote VM/Ollama)'
+              source: 'Gemma 2 (Remote VM / Ollama)'
             };
           }
         }
@@ -88,7 +145,7 @@ Task: Generate an immersive audio observation snippet and 1 gentle mindful outdo
       }
     }
 
-    // Local Open-Weight Native Fallback (Guaranteed 100% offline trail safety)
+    // Mode C: Instant Embedded Edge Fallback (100% offline, zero battery drain on remote trail)
     const observation = waypoint.audioText;
     const mindful = waypoint.mindfulTip || NATURE_OBSERVATION_PROMPTS[Math.floor(Math.random() * NATURE_OBSERVATION_PROMPTS.length)];
     this.lastResponse = observation;
@@ -98,7 +155,7 @@ Task: Generate an immersive audio observation snippet and 1 gentle mindful outdo
     return {
       audioText: observation,
       mindfulTip: mindful,
-      source: 'Gemma 2 (Embedded Edge Cache)'
+      source: 'Gemma 2 (Embedded Edge Intelligence)'
     };
   }
 

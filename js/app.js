@@ -76,7 +76,11 @@ class OutscapeApp {
       mindfulText: document.getElementById('mindful-text'),
       btnReplayAudio: document.getElementById('btn-replay-audio'),
       btnPauseAudio: document.getElementById('btn-pause-audio'),
-      waveformCanvas: document.getElementById('waveform-canvas')
+      waveformCanvas: document.getElementById('waveform-canvas'),
+
+      // WebGPU elements
+      toggleWebgpu: document.getElementById('toggle-webgpu'),
+      webgpuDeviceInfo: document.getElementById('webgpu-device-info')
     };
 
     if (this.aiEngine.endpointUrl) {
@@ -271,6 +275,20 @@ class OutscapeApp {
     this.el.btnOpenAiModal.addEventListener('click', () => {
       this.el.modalPromptPreview.textContent = this.aiEngine.lastPrompt || 
         "System: You are Outscape, an outdoor audio nature guide powered by open-weight Gemma 2.\nTask: Generate an immersive nature observation snippet.";
+      
+      // Update WebGPU toggle status
+      if (this.aiEngine.webGPUSupported) {
+        this.el.webgpuDeviceInfo.textContent = `Available: ${this.aiEngine.gpuInfo || 'Device GPU'}`;
+        this.el.webgpuDeviceInfo.style.color = 'var(--emerald-400)';
+        this.el.toggleWebgpu.disabled = false;
+        this.el.toggleWebgpu.checked = this.aiEngine.useWebGPU;
+      } else {
+        this.el.webgpuDeviceInfo.textContent = 'Not supported in current browser (using instant edge fallback)';
+        this.el.webgpuDeviceInfo.style.color = 'var(--text-muted)';
+        this.el.toggleWebgpu.disabled = true;
+        this.el.toggleWebgpu.checked = false;
+      }
+
       this.el.aiModal.showModal();
     });
 
@@ -278,9 +296,14 @@ class OutscapeApp {
       this.el.aiModal.close();
     });
 
+    this.el.toggleWebgpu.addEventListener('change', (e) => {
+      this.aiEngine.setWebGPU(e.target.checked);
+    });
+
     this.el.btnSaveAi.addEventListener('click', () => {
       const endpoint = this.el.inputEndpoint.value;
       this.aiEngine.setEndpoint(endpoint);
+      this.aiEngine.setWebGPU(this.el.toggleWebgpu.checked);
       this.el.aiModal.close();
     });
 
